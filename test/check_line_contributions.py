@@ -104,82 +104,85 @@ def contribucio_per_data(df):
 
     return merged
 
-
-commit_details = get_commit_details()
-formatted_data = format_commit_details(commit_details)
-
-# Create a DataFrame and print it as a table
-df = pd.DataFrame(formatted_data, columns=['Date', 'User ID', 'Filename', 'Lines Added', 'Lines Deleted'])
-print(df.to_string(index=False))
-
-
-# Cridar la funció i mostrar el resultat
-resultat_fitxers = contribucio_fitxers(df)
-print(resultat_fitxers)
-
-# Crear una visualització de columnes apilades
-pivot_df = resultat_fitxers.pivot(index='Filename', columns='User ID', values='Percentage Contribution')
-pivot_df.plot(kind='bar', stacked=True, figsize=(10, 6))
-
-plt.xlabel('Filename')
-plt.ylabel('Percentage Contribution')
-plt.title('Percentage Contribution per User ID and Filename')
-plt.legend(title='User ID', bbox_to_anchor=(1.05, 1), loc='upper left')
-plt.xticks(rotation=45)
-plt.savefig('informe_contribucio_stacked.png', bbox_inches='tight')
-plt.show()
-
-# Cridar la funció i obtenir el resultat
-resultat_per_data = contribucio_per_data(df)
-print(resultat_per_data)
-
-
-# Crear una visualització de columnes apilades utilitzant el total en lloc dels percentatges
-pivot_df = resultat_per_data.pivot(index='Date', columns='User ID', values='Total Lines Changed')
-pivot_df.plot(kind='bar', stacked=True, figsize=(10, 6))
-
-plt.xlabel('Date')
-plt.ylabel('Total Lines Changed')
-plt.title('Total Lines Changed per User ID and Date')
-plt.legend(title='User ID', bbox_to_anchor=(1.05, 1), loc='upper left')
-plt.xticks(rotation=45)
-plt.savefig('informe_contribucio_total.png', bbox_inches='tight')
-plt.show()
-
-
-# Obtenir el número del grup a partir del nom del repositori
-repo_name = get_repo_name()
-group_number = repo_name.split('_')[-1]
-
-
-
-# Generar l'informe HTML assegurant-se que no hi hagi problemes d'accents
-html_content = f"""
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Informe del Grup {group_number}</title>
-</head>
-<body>
-    <h1>Informe del Grup {group_number}</h1>
+try:
+    commit_details = get_commit_details()
+    formatted_data = format_commit_details(commit_details)
     
-    <h2>Dataframe per Fitxer</h2>
-    {resultat_fitxers.to_html(index=False)}
-
-    <h2>Visualització per Fitxer</h2>
-    <img src="informe_contribucio_stacked.png" alt="Informe Contribució per Fitxer">
-
-    <h2>Dataframe per Data</h2>
-    {resultat_per_data.to_html(index=False)}
-
-    <h2>Visualització per Data</h2>
-    <img src="informe_contribucio_total.png" alt="Informe Contribució per Data">
-</body>
-</html>
-"""
-
-# Guardar l'informe HTML en un fitxer
-with open('report.html', 'w', encoding='utf-8') as f:
-    f.write(html_content)
-
-print("Informe HTML generat amb èxit.")
+    # Create a DataFrame and print it as a table
+    df = pd.DataFrame(formatted_data, columns=['Date', 'User ID', 'Filename', 'Lines Added', 'Lines Deleted'])
+    print(df.to_string(index=False))
+    
+    
+    # Cridar la funció i mostrar el resultat
+    resultat_fitxers = contribucio_fitxers(df)
+    print(resultat_fitxers)
+    
+    # Crear una visualització de columnes apilades
+    pivot_df = resultat_fitxers.pivot(index='Filename', columns='User ID', values='Percentage Contribution')
+    pivot_df.plot(kind='bar', stacked=True, figsize=(10, 6))
+    
+    plt.xlabel('Filename')
+    plt.ylabel('Percentage Contribution')
+    plt.title('Percentage Contribution per User ID and Filename')
+    plt.legend(title='User ID', bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.xticks(rotation=45)
+    plt.savefig('informe_contribucio_stacked.png', bbox_inches='tight')
+    plt.show()
+    
+    # Cridar la funció i obtenir el resultat
+    resultat_per_data = contribucio_per_data(df)
+    print(resultat_per_data)
+    
+    
+    # Crear una visualització de columnes apilades utilitzant el total en lloc dels percentatges
+    pivot_df = resultat_per_data.pivot(index='Date', columns='User ID', values='Total Lines Changed')
+    pivot_df.plot(kind='bar', stacked=True, figsize=(10, 6))
+    
+    plt.xlabel('Date')
+    plt.ylabel('Total Lines Changed')
+    plt.title('Total Lines Changed per User ID and Date')
+    plt.legend(title='User ID', bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.xticks(rotation=45)
+    plt.savefig('informe_contribucio_total.png', bbox_inches='tight')
+    plt.show()
+    
+    
+    # Obtenir el número del grup a partir del nom del repositori
+    repo_name = get_repo_name()
+    group_number = repo_name.split('_')[-1]
+    
+    
+    
+    # Generar l'informe HTML assegurant-se que no hi hagi problemes d'accents
+    html_content = f"""
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Informe del Grup {group_number}</title>
+    </head>
+    <body>
+        <h1>Informe del Grup {group_number}</h1>
+        
+        <h2>Dataframe per Fitxer</h2>
+        {resultat_fitxers.to_html(index=False)}
+    
+        <h2>Visualització per Fitxer</h2>
+        <img src="informe_contribucio_stacked.png" alt="Informe Contribució per Fitxer">
+    
+        <h2>Dataframe per Data</h2>
+        {resultat_per_data.to_html(index=False)}
+    
+        <h2>Visualització per Data</h2>
+        <img src="informe_contribucio_total.png" alt="Informe Contribució per Data">
+    </body>
+    </html>
+    """
+    
+    # Guardar l'informe HTML en un fitxer
+    with open('report.html', 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    
+    print("Informe HTML generat amb èxit.")
+except ValueError as e:
+    print(f"Error: {e}")
+    print("No s'ha pogut generar l'informe HTML.")
