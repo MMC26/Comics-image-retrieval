@@ -3,7 +3,7 @@ import torch
 import torch.nn
 import torchvision
 import torchvision.transforms as transforms
-from models.models_comic import *
+from models.models import *
 from dataloaders import *
 
 
