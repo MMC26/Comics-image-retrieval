@@ -1,62 +1,53 @@
-import os
-import random
-import wandb
-
-import numpy as np
 import torch
-import torch.nn as nn
-import torchvision
-import torchvision.transforms as transforms
+import wandb
+import random
+import numpy as np
 
 from train import *
-from test import *
 from utils.utils import *
-from tqdm.auto import tqdm
+from dataloaders import *
 
-# Ensure deterministic behavior
+# Semilles per reproductibilitat
 torch.backends.cudnn.deterministic = True
-random.seed(hash("setting random seeds") % 2**32 - 1)
-np.random.seed(hash("improves reproducibility") % 2**32 - 1)
-torch.manual_seed(hash("by removing stochasticity") % 2**32 - 1)
-torch.cuda.manual_seed_all(hash("so runs are repeatable") % 2**32 - 1)
+random.seed(hash("setting random seeds") % 2 ** 32 - 1)
+np.random.seed(hash("improves reproducibility") % 2 ** 32 - 1)
+torch.manual_seed(hash("by removing stochasticity") % 2 ** 32 - 1)
+torch.cuda.manual_seed_all(hash("so runs are repeatable") % 2 ** 32 - 1)
 
-# Device configuration
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-# remove slow mirror from list of MNIST mirrors
-torchvision.datasets.MNIST.mirrors = [mirror for mirror in torchvision.datasets.MNIST.mirrors
-                                      if not mirror.startswith("http://yann.lecun.com")]
+# Device
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-
-
-def model_pipeline(cfg:dict) -> None:
+def model_pipeline(cfg: dict):
     # tell wandb to get started
-    with wandb.init(project="pytorch-demo", config=cfg):
-      # access all HPs through wandb.config, so logging matches execution!
-      config = wandb.config
+    with wandb.init(project=cfg["project_name"], config=cfg):
+        # access all HPs through wandb.config, so logging matches execution!
+        config = wandb.config
 
-      # make the model, data, and optimization problem
-      model, train_loader, test_loader, criterion, optimizer = make(config,device=device)
+        # make the model, data, and optimization problem
+        model, train_loader, val_loader, test_loader, criterion, optimizer = make(config, device=device)
 
-      # and use them to train the model
-      train(model, train_loader, criterion, optimizer, config,device=device)
+        # and use them to train the model
+        train(model, train_loader, val_loader, optimizer, config, device=device)
 
-      # and test its final performance
-      test(model, test_loader,device=device)
+        # and validate
+        validate(model, val_loader, device=device)
+        return model
 
-    return model
 
 if __name__ == "__main__":
-    wandb.login(key='1abe1583f49bd10e532216d2c9f28b41cb3c06a6')
+    wandb.login()
 
     config = dict(
+        embedding_dim=512,
+        freeze_bert=True,
+        freeze_resnet=True,
+        learning_rate=1e-4,
+        batch_size=5,
+        max_samples=50,
         epochs=5,
-        classes=10,
-        kernels=[16, 32],
-        batch_size=128,
-        learning_rate=5e-3,
-        dataset="MNIST",
-        architecture="CNN")
-    model = model_pipeline(config)
+        project_name="comics-retrieval",
+        checkpoint_path="checkpoint.pt",
+    )
 
+    model = model_pipeline(config)
