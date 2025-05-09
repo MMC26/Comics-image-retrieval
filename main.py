@@ -48,7 +48,7 @@ def model_pipeline(cfg:dict) -> None:
     return model
 
 if __name__ == "__main__":
-    wandb.login()
+    wandb.login(key='1abe1583f49bd10e532216d2c9f28b41cb3c06a6')
 
     config = dict(
         epochs=5,
