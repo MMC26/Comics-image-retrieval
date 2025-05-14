@@ -142,6 +142,3 @@ def train(model, train_loader, val_loader, optimizer, config, device="cuda"):
 
         print(f"[Epoch {epoch}] Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.4f}")
         print(f"[Epoch {epoch}] Val   Loss: {val_loss:.4f} | Val   Acc: {val_acc:.4f}")
-
-        # SAVE CHECKPOINT
-        save_checkpoint(config["checkpoint_path"], model, optimizer, epoch)
