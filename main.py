@@ -43,11 +43,12 @@ if __name__ == "__main__":
         freeze_bert=True,
         freeze_resnet=True,
         learning_rate=1e-4,
-        batch_size=5,
-        max_samples=None,
-        epochs=5,
+        batch_size=32,
+        max_samples=1,
+        epochs=1,
         project_name="comics-retrieval",
         checkpoint_path="checkpoint.pt",
+        num_workers=8
     )
 
     model = model_pipeline(config)

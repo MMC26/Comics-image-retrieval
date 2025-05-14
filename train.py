@@ -13,6 +13,8 @@ def train_batch(model, batch, optimizer, device="cuda"):
     texts = batch["texts"]
     image_sets = batch["image_sets"]
     labels = batch["labels"]
+    # print("Tipus de texts:", type(texts))
+    # print("Mostra de texts:", texts[:2])
 
     # Codificació conjunta via forward
     text_embeddings, _ = model(raw_text=texts)  # [B, D]
@@ -106,20 +108,25 @@ def train(model, train_loader, val_loader, optimizer, config, device="cuda"):
 
     # Carrega el checkpoint si existeix
     start_epoch = load_checkpoint(config["checkpoint_path"], model, optimizer)
-
+    
     for epoch in tqdm(range(start_epoch, config.epochs), desc="Entrenant"):
         model.train()
         total_loss = 0.0
         total_acc = 0.0
         total_samples = 0
+        print(f"\n[INFO] ➡️ Inici de l'època {epoch}")
+        for batch_idx, batch in enumerate(train_loader):
+            print(f"[INFO] 🚀 Processant batch {batch_idx} de l'època {epoch}...")
 
-        for batch in train_loader:
             loss, acc, n = train_batch(model, batch, optimizer, device)
             example_ct += n
             total_loss += loss * n
             total_acc += acc * n
             total_samples += n
 
+            print(f"[INFO] ✅ Batch {batch_idx} completat. Loss: {loss:.4f}, Acc: {acc:.4f}")
+
+        print(f"[INFO] 📝 Fi de l'època {epoch}. Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}")
         train_loss = total_loss / total_samples
         train_acc = total_acc / total_samples
 
