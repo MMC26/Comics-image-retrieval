@@ -44,7 +44,7 @@ if __name__ == "__main__":
         freeze_resnet=True,
         learning_rate=1e-4,
         batch_size=5,
-        max_samples=50,
+        max_samples=None,
         epochs=5,
         project_name="comics-retrieval",
         checkpoint_path="checkpoint.pt",
