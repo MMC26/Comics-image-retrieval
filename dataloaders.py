@@ -1,3 +1,5 @@
+import os
+import pandas as pd
 from datasets import load_dataset
 from torch.utils.data import Dataset, DataLoader
 from PIL import Image
@@ -7,9 +9,11 @@ class ComicsDataset(Dataset):
         """
         Dataset per a caption_relevance amb totes les imatges disponibles per caption.
         """
-        self.dataset = load_dataset("VLR-CVC/ComicsPAP", "caption_relevance", split=split)
+        base_path = "/home/datasets/ComicsPAP/caption_relevance"
+        parquet_files = [os.path.join(base_path, f) for f in os.listdir(base_path) if f.startswith(split)]
+        self.dataset = pd.concat([pd.read_parquet(f) for f in parquet_files], ignore_index=True)
         if max_samples:
-            self.dataset = self.dataset.select(range(max_samples))
+            self.dataset = self.dataset.iloc[:max_samples]
 
     def __len__(self):
         return len(self.dataset)
@@ -21,7 +25,7 @@ class ComicsDataset(Dataset):
         label = example["solution_index"]      
 
         return {
-            "text": caption,
+            "texts": caption,
             "images": options,
             "label": label
         }
@@ -30,7 +34,7 @@ def comics_collate_fn(batch):
     Agrupa una batch de mostres (caption + label).
     Retorna llistes: texts, llistes d’imatges (una per exemple), labels.
     """
-    texts = [item["text"] for item in batch]
+    texts = [item["texts"] for item in batch]
     image_sets = [item["images"] for item in batch]  
     labels = [item["label"] for item in batch]
     return {
