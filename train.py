@@ -1,3 +1,4 @@
+import random
 import torch
 import wandb
 from tqdm.auto import tqdm
@@ -11,12 +12,12 @@ def compute_accuracy(sim_scores, labels):
     return correct / len(labels)
 
 
-def train_batch(model, batch, optimizer, device="cuda"):
-    texts = batch["texts"]  # Llista de textos
-    image_sets = batch["image_sets"]  # Llista de llistes de paths
-    labels = batch["labels"]  # Llista d'enters
+def train_batch(model, batch, optimizer, criterion, device="cuda"):
+    texts = batch["texts"]
+    image_sets = batch["image_sets"]
+    labels = batch["labels"]
 
-    text_embeddings, _ = model(raw_text=texts)  # [B, D]
+    text_embeddings, _ = model(raw_text=texts)
 
     image_embeddings = []
     for img_list in image_sets:
@@ -24,24 +25,35 @@ def train_batch(model, batch, optimizer, device="cuda"):
         image_embeddings.append(img_emb)
     image_embeddings = torch.stack(image_embeddings).to(device)  # [B, K, D]
 
-    sim_scores = torch.stack([
-        model.compute_similarity(text_embeddings[i].unsqueeze(0), image_embeddings[i])
-        for i in range(text_embeddings.size(0))
-    ])  # [B, K]
-
+    B, K, D = image_embeddings.shape
     labels_tensor = torch.tensor(labels, dtype=torch.long, device=device)
 
-    loss = F.cross_entropy(sim_scores, labels_tensor)
-    acc = compute_accuracy(sim_scores, labels_tensor)
+    positives = image_embeddings[torch.arange(B), labels_tensor]  # [B, D]
+
+    # Agafem només UN negatiu per cada exemple
+    negative_indices = []
+    for i in range(B):
+        negs = [j for j in range(K) if j != labels[i]]
+        neg_idx = random.choice(negs)
+        negative_indices.append(neg_idx)
+    negatives = image_embeddings[torch.arange(B), torch.tensor(negative_indices, device=device)]  # [B, D]
+
+    loss = criterion(text_embeddings, positives, negatives)
 
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
 
+    # Accuracy: compara quin és més proper
+    sim_pos = F.cosine_similarity(text_embeddings, positives, dim=1)
+    sim_neg = F.cosine_similarity(text_embeddings, negatives, dim=1)
+    acc = (sim_pos > sim_neg).float().mean().item()
+
     return loss.item(), acc, len(labels)
 
 
-def validate(model, loader, device="cuda"):
+
+def validate(model, loader, criterion, device="cuda"):
     model.eval()
     total_loss = 0.0
     total_acc = 0.0
@@ -53,22 +65,33 @@ def validate(model, loader, device="cuda"):
             image_sets = batch["image_sets"]
             labels = batch["labels"]
 
-            text_embeddings, _ = model(raw_text=texts)  # [B, D]
+            text_embeddings, _ = model(raw_text=texts)
 
             image_embeddings = []
             for img_list in image_sets:
                 _, img_emb = model(image_paths=img_list)
                 image_embeddings.append(img_emb)
-            image_embeddings = torch.stack(image_embeddings).to(device)  # [B, K, D]
+            image_embeddings = torch.stack(image_embeddings).to(device)
 
-            sim_scores = torch.stack([
-                model.compute_similarity(text_embeddings[i].unsqueeze(0), image_embeddings[i])
-                for i in range(text_embeddings.size(0))
-            ])  # [B, K]
-
+            B, K, D = image_embeddings.shape
             labels_tensor = torch.tensor(labels, dtype=torch.long, device=device)
-            loss = F.cross_entropy(sim_scores, labels_tensor)
-            acc = compute_accuracy(sim_scores, labels_tensor)
+
+            positives = image_embeddings[torch.arange(B), labels_tensor]  # [B, D]
+
+            # gafem només UN negatiu per cada exemple
+            negative_indices = []
+            for i in range(B):
+                negs = [j for j in range(K) if j != labels[i]]
+                neg_idx = random.choice(negs)
+                negative_indices.append(neg_idx)
+            negatives = image_embeddings[torch.arange(B), torch.tensor(negative_indices, device=device)]  # [B, D]
+
+            loss = criterion(text_embeddings, positives, negatives)
+
+            # Accuracy: compara quin és més proper
+            sim_pos = F.cosine_similarity(text_embeddings, positives, dim=1)
+            sim_neg = F.cosine_similarity(text_embeddings, negatives, dim=1)
+            acc = (sim_pos > sim_neg).float().mean().item()
 
             n = len(labels)
             total_loss += loss.item() * n
@@ -78,6 +101,7 @@ def validate(model, loader, device="cuda"):
     avg_loss = total_loss / total_samples
     avg_acc = total_acc / total_samples
     return avg_loss, avg_acc
+
 
 
 def save_checkpoint(path, model, optimizer, epoch):
@@ -100,7 +124,7 @@ def load_checkpoint(path, model, optimizer):
         return 0
 
 
-def train(model, train_loader, val_loader, optimizer, config, device="cuda"):
+def train(model, train_loader, val_loader, optimizer, criterion,config, device="cuda"):
     wandb.watch(model, log="all", log_freq=10)
     example_ct = 0
 
@@ -116,7 +140,7 @@ def train(model, train_loader, val_loader, optimizer, config, device="cuda"):
         for batch_idx, batch in enumerate(train_loader):
             print(f"[INFO] 🚀 Processant batch {batch_idx} de l'època {epoch}...")
 
-            loss, acc, n = train_batch(model, batch, optimizer, device)
+            loss, acc, n = train_batch(model, batch, optimizer,criterion, device)
             example_ct += n
             total_loss += loss * n
             total_acc += acc * n
@@ -128,7 +152,7 @@ def train(model, train_loader, val_loader, optimizer, config, device="cuda"):
         train_acc = total_acc / total_samples
         print(f"[INFO] 📝 Fi de l'època {epoch}. Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}")
 
-        val_loss, val_acc = validate(model, val_loader, device)
+        val_loss, val_acc = validate(model, val_loader, criterion,device)
 
         wandb.log({
             "epoch": epoch,
@@ -140,3 +164,7 @@ def train(model, train_loader, val_loader, optimizer, config, device="cuda"):
 
         print(f"[Epoch {epoch}] Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.4f}")
         print(f"[Epoch {epoch}] Val   Loss: {val_loss:.4f} | Val   Acc: {val_acc:.4f}")
+
+        save_checkpoint(config["checkpoint_path"], model, optimizer, epoch)
+
+ 

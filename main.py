@@ -29,10 +29,10 @@ def model_pipeline(cfg: dict):
         model, train_loader, val_loader, test_loader, criterion, optimizer = make(config, device=device)
 
         # and use them to train the model
-        train(model, train_loader, val_loader, optimizer, config, device=device)
+        train(model, train_loader, val_loader, optimizer,criterion, config, device=device)
 
         # and validate
-        validate(model, val_loader, device=device)
+        # validate(model, val_loader, device=device)
 
         qualitative_test(model, test_loader, device=device)
 
@@ -48,11 +48,11 @@ if __name__ == "__main__":
         freeze_resnet=True,
         learning_rate=1e-4,
         batch_size=32,
-        max_samples=1,
-        epochs=1,
+        max_samples=None,
+        epochs=5,
         project_name="comics-retrieval",
         checkpoint_path="checkpoint.pt",
-        num_workers=8
+        num_workers=0
     )
 
     model = model_pipeline(config)

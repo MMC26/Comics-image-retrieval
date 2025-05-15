@@ -33,7 +33,7 @@ def make(config, device="cuda"):
         freeze_resnet=config.freeze_resnet,
     ).to(device)
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.TripletMarginLoss(margin=0.2, p=2, reduction='mean')
     optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
     
     return model, train_loader, val_loader, test_loader, criterion, optimizer
