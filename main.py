@@ -3,6 +3,7 @@ import wandb
 import random
 import numpy as np
 
+from test import qualitative_test
 from train import *
 from utils.utils import *
 from dataloaders import *
@@ -32,6 +33,9 @@ def model_pipeline(cfg: dict):
 
         # and validate
         validate(model, val_loader, device=device)
+
+        qualitative_test(model, test_loader, device=device)
+
         return model
 
 
