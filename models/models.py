@@ -88,6 +88,9 @@ class Baseline(nn.Module):
         Returns:
             Dictionary of input_ids, attention_mask, etc.
         """
+        # print("[DEBUG] text_samples:", text_samples)
+        # print("[DEBUG] Tipus de cada element:", [type(t) for t in text_samples])
+
         encoded_text = self.bert_tokenizer(
             text_samples,
             padding="max_length",
@@ -154,7 +157,7 @@ class Baseline(nn.Module):
             image_embeddings: Tensor of shape [batch_size, embedding_dim]
         """
         if image_paths is not None:
-            image_features = self.preprocess_image(image_paths)
+            image_features = self.preprocess_image(image_paths).to(device)
 
         # Get ResNet features
         with torch.no_grad() if not self.resnet[0].training else torch.enable_grad():

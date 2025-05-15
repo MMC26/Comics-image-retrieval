@@ -8,18 +8,24 @@ from dataloaders import *
 
 
 def make(config, device="cuda"):
+    print("Carregant train_loader...")
     train_loader = make_comics_loader(split="train",
                                       batch_size=config.batch_size,
                                       max_samples=config.max_samples,
-                                      shuffle=True)
+                                      shuffle=True,
+                                      num_workers=config.num_workers)
+    print("Carregant val_loader...")
     val_loader = make_comics_loader(split="val",
                                     batch_size=config.batch_size,
                                     max_samples=config.max_samples,
-                                    shuffle=False)
+                                    shuffle=False,
+                                    num_workers=config.num_workers)
+    print("Carregant test_loader...")
     test_loader = make_comics_loader(split="test",
                                      batch_size=config.batch_size,
                                      max_samples=config.max_samples,
-                                     shuffle=False)
+                                     shuffle=False,
+                                      num_workers=config.num_workers)
 
     model = Baseline(
         embedding_dim=config.embedding_dim,
