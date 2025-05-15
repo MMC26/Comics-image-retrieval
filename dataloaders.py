@@ -16,53 +16,50 @@ class ComicsDataset(Dataset):
         return len(self.dataset)
 
     def __getitem__(self, idx):
-        start_idx = idx
-        while True:
-            example = self.dataset.iloc[idx]
-            caption = example["previous_panel_caption"]
+        example = self.dataset.iloc[idx]
+        caption = example["previous_panel_caption"]
 
-            # Si no hi ha caption vàlid, passa al següent
-            if not isinstance(caption, str) or not caption.strip():
-                idx = (idx + 1) % len(self)
-                if idx == start_idx:
-                    raise ValueError("No hi ha cap exemple amb caption vàlid.")
-                continue
+        if not isinstance(caption, str) or not caption.strip():
+            return self.__getitem__((idx + 1) % len(self))  # recursivament salta
 
-            options = example["options"]
-            label = example["solution_index"]
+        options = example["options"]
+        label = example["solution_index"]
 
-            valid_options = []
-            valid_indices = []
-            for i, opt in enumerate(options):
-                if isinstance(opt, dict) and "bytes" in opt and opt["bytes"]:
-                    # Carrega la imatge des de bytes
-                    image = Image.open(io.BytesIO(opt["bytes"]))
-                    valid_options.append(image)
-                    valid_indices.append(i)
+        valid_options = []
+        valid_indices = []
+        for i, opt in enumerate(options):
+            if isinstance(opt, dict) and "bytes" in opt and opt["bytes"]:
+                image = Image.open(io.BytesIO(opt["bytes"]))
+                valid_options.append(image)
+                valid_indices.append(i)
 
-            # Si el label no apunta a una opció vàlida, passa al següent
-            if label not in valid_indices:
-                idx = (idx + 1) % len(self)
-                if idx == start_idx:
-                    raise ValueError("No hi ha cap exemple amb opcions vàlides.")
-                continue
+        if label not in valid_indices or len(valid_indices) < 2:
+            return self.__getitem__((idx + 1) % len(self))
 
-            new_label = valid_indices.index(label)
-            return {
-                "texts": caption,
-                "images": valid_options,
-                "label": new_label
-            }
-def comics_collate_fn(batch):
-    texts = [item["texts"] for item in batch]
-    image_sets = [item["images"] for item in batch]
-    labels = [item["label"] for item in batch]
-    return {"texts": texts, "image_sets": image_sets, "labels": labels}
+        # Anchor = caption, Positive = correct image, Negative = any incorrect image
+        pos_img = valid_options[valid_indices.index(label)]
 
-def make_comics_loader(split="train", batch_size=4, max_samples=None, shuffle=True,num_workers=2):
+        # Escull negatiu diferent del positiu
+        neg_candidates = [img for i, img in enumerate(valid_options) if valid_indices[i] != label]
+        neg_img = random.choice(neg_candidates)
+
+        return {
+            "text": caption,
+            "positive": pos_img,
+            "negative": neg_img,
+        }
+
+def comics_triplet_collate_fn(batch):
+    texts = [item["text"] for item in batch]
+    positives = [item["positive"] for item in batch]
+    negatives = [item["negative"] for item in batch]
+    return {"texts": texts, "positives": positives, "negatives": negatives}
+
+
+def make_comics_loader(split="train", batch_size=4, max_samples=None, shuffle=True, num_workers=2):
     dataset = ComicsDataset(split=split, max_samples=max_samples)
     loader = DataLoader(dataset, batch_size=batch_size,
                         shuffle=shuffle, num_workers=num_workers,
-                        collate_fn=comics_collate_fn,
+                        collate_fn=comics_triplet_collate_fn,
                         pin_memory=True)
     return loader
