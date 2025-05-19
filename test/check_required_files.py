@@ -6,7 +6,7 @@ def check_required_files(directory, required_files):
 
 # Defineix el directori del repositori i els fitxers requerits
 repo_directory = '.'  # Canvia aquest valor si el directori és diferent
-required_files = ['README.md', 'LICENSE', 'main.py','environment.yml']
+required_files = ['README.md', 'LICENSE', 'main.py','environment.yml','test.md','resultats.md','arquitectures.md']
 
 # Comprova si els fitxers requerits existeixen
 missing_files = check_required_files(repo_directory, required_files)
