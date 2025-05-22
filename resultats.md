@@ -1,27 +1,52 @@
-## Resultats amb totes les dades:
+# Resultats de l’Experimentació
 
-Abans de fer la cerca d'hiperparàmetres, hem fet una prova amb totes les dades: 
-- **Batch size**: 32  
-- **Èpoques**: 5  
-- **BERT**: True  
-- **RESNET**: True  
-- **Learning rate**: 0.0001  
-- **Embedding dim**: 512
+Aquest document recull el seguiment de les diferents proves realitzades durant el desenvolupament del sistema de recuperació d’imatges a partir de text, basat en un model multimodal amb BERT i ResNet50.
 
-Aquesta prova ens ha resultat molt lenta i, per aquest motiu, no l’hem pogut repetir. Tot i així, hem obtingut els gràfics de loss i accuracy del train i de la validació.
+## 🧪 Enfoc inicial
 
-En el **train**, els resultats han tingut sentit, ja que la loss ha anat baixant i l’accuracy ha anat pujant fins al 72%. 
-En canvi, en la **validació**, la loss ha anat pujant i baixant sense una tendència clara, i l’accuracy ha disminuït lleugerament fins al 52%. Això pot ser degut a que no hem pogut fer masses èpoques.
+Des del principi es va optar per utilitzar **hard negative mining** per construir les pèrdues de contrast. Aquesta decisió es va prendre amb la intenció de millorar la discriminació del model entre mostres similars però incorrectes. En les primeres fases es va observar que els resultats del test eren poc coherents: les imatges recuperades sovint no tenien cap relació amb els textos d’entrada.
 
-## Resultats de la cerca d’hiperparàmetres:
+## 🔹 Fase 1: Proves inicials amb subconjunt de dades (5.000 mostres)
 
-Per intentar millorar el model, hem fet una cerca d’hiperparàmetres provant diferents combinacions.
-La cerca s’ha fet amb poques mostres (**`max_samples = 20`**) per evitar temps d’entrenament elevat. Alguns experiments han acabat amb error `KILLED`, però aquests són els que han funcionat:
+Es va començar amb un model bàsic:
+- Arquitectura: BERT + ResNet50
+- `embedding_dim = 120`, `lr = 1e-4`, `epochs = 20`
 
-Les combinacions provades han sigut:
-| Exp | LR     | EMB | BERT | RESNET | BS | Train Loss | Train Acc | Val Loss | Val Acc |
-|-----|--------|-----|------|--------|----|------------|-----------|----------|---------|
-| 1   | 0.0001 | 128 | ✅   | ✅     | 16 | 0.0267     | 1.0000    | 0.1992   | 0.5500  |
-| 2   | 0.0001 | 512 | ✅   | ✅     | 16 | 0.0504     | 0.9000    | 0.2172   | 0.3000  |
-| 3   | 0.0005 | 128 | ✅   | ✅     | 16 | 0.0536     | 1.0000    | 0.1794   | 0.7000  |
-| 4   | 0.0005 | 512 | ✅   | ✅     | 16 | —          | —         | —        | —       |
+➡️ Resultats:
+- Overfitting molt evident: `train recall = 1`, però el `val recall=0.255` era molt baix.
+- Enllaç: [W&B Run](https://wandb.ai/grup_07/comics-retrieval/runs/1404lx2u?nw=nwusermmcabestany26)
+
+Es van fer proves variant els hiperparàmetres:
+
+- `embedding_dim = 128`, `lr = 1e-5`  
+  → Cap millora significativa, `train recall = 0.95` i `val recall=0.267`.
+  [W&B Run](https://wandb.ai/grup_07/comics-retrieval/runs/g2wdqpf2?nw=nwusermmcabestany26)
+
+- `embedding_dim = 512`, `lr = 1e-4`  
+  → L’overfitting persistia, amb uns resultats: `train recall = 0.98` i `val recall=0.24`.
+  [W&B Run](https://wandb.ai/grup_07/comics-retrieval/runs/j2g69v01?nw=nwusermmcabestany26)
+
+🧠 **Hipòtesi:** massa poques dades i/o un model massa simple per capturar la semàntica multimodal.
+
+## 🔹 Fase 2: Model amb totes les dades i regularització
+
+Per millorar la generalització, es va afegir una capa lineal addicional i un **dropout de 0.3**. També es va entrenar amb **tot el conjunt de dades**. Amb la una configuració amb `embedding_dim=128`, `  learning_rate=1e-4` i `batch_size=32`.
+
+➡️ Resultats:
+- L’overfitting es va reduir lleugerament.
+- Però el `val recall` continuava sense millorar, a més a més les imatges retornades seguien sent poc rellevants.
+- Després de fer `15 epochs`, obtenim els següents resultats: `train recall = 0.609` i un `val recall = 0.248`
+- Enllaços:
+  - [W&B Run 1](https://wandb.ai/grup_07/comics-retrieval/runs/365t55pz)
+  - [W&B Run 2 (cont.)](https://wandb.ai/grup_07/comics-retrieval/runs/syt3ybt2?nw=nwuserlaiaalexandrasjoberg)
+
+## 🛠️ Altres proves: augment de dades
+
+A partir d’aquest moment, es va començar a aplicar **data augmentation** sobre les imatges amb l’objectiu d’augmentar la robustesa del model i intentar millorar el rendiment en validació i test. Les transformacions aplicades incloïen:
+
+- Retall aleatori amb redimensionat (RandomResizedCrop)
+- Girs horitzontals aleatoris (RandomHorizontalFlip)
+- Canvis lleus en la brillantor, contrast i saturació (ColorJitter)
+- Normalització amb les estadístiques d’ImageNet
+
+
