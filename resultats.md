@@ -38,7 +38,7 @@ Per millorar la generalització, es va afegir una capa lineal addicional i un **
 - Després de fer `15 epochs`, obtenim els següents resultats: `train recall = 0.609` i un `val recall = 0.248`
 - Enllaços:
   - [W&B Run 1](https://wandb.ai/grup_07/comics-retrieval/runs/365t55pz)
-  - [W&B Run 2 (cont.)](https://wandb.ai/grup_07/comics-retrieval/runs/syt3ybt2?nw=nwuserlaiaalexandrasjoberg)
+  - [W&B Run 1 (cont.)](https://wandb.ai/grup_07/comics-retrieval/runs/syt3ybt2?nw=nwuserlaiaalexandrasjoberg)
 
 ## 🛠️ Altres proves: augment de dades
 
@@ -49,4 +49,58 @@ A partir d’aquest moment, es va començar a aplicar **data augmentation** sobr
 - Canvis lleus en la brillantor, contrast i saturació (ColorJitter)
 - Normalització amb les estadístiques d’ImageNet
 
+## 🧪 Nou Enfocament
+Vist que els resultats seguien sent insatisfactoris, vam substituir `BERT` per `Sentence-BERT`, un model optimitzat per comparar embeddings en tasques de retrieval.
 
+🔢 Noves mètriques per avaluar el sistema
+
+Amb el canvi a Sentence-BERT, també hem refinat la nostra avaluació amb noves mètriques de retrieval més detallades:
+- val_recall@1 i train_recall@1: indiquen la capacitat del model de recuperar la imatge correcta en primera posició dins dels conjunts de validació i entrenament, respectivament.
+- val_global_recall@1 i val_global_recall@10: mesuren el recall sobre tot el conjunt de validació, utilitzant com a candidats totes les imatges del corpus. Això és molt més exigent i realista. 
+
+- Enllaços:
+  - [W&B Run 1](https://wandb.ai/grup_07/comics-retrieval/runs/o3mwmzsu?nw=nwusermmcabestany26)
+  - [W&B Run 2](https://wandb.ai/grup_07/comics-retrieval/runs/97uujv00 )
+
+🔎 Resultats qualitatius: 
+Les imatges retornades tenen una millor correspondència semàntica amb el text:
+  - Si el text descriu dues persones, les imatges també les mostren.
+  - Si el text parla de colors o accions concretes, aquests detalls apareixen visualment.
+
+➡️ Resultats:
+- Un bon rendiment en entrenament: amb un `train_recall@1` de ~0.60
+- Un rendiment més limitat en validació: el `val_recall@1` és de ~0.29, mostrant que la capacitat de generalització del model és força més baixa.
+- Baix rendiment en context global: el `val_global_recall@10` és només ~0.015, la qual cosa indica que quan el model ha de recuperar entre totes les imatges del corpus, les seves prediccions cauen molt.
+
+Sentence-BERT proporciona una base raonablement sòlida per a la tasca, amb associacions text-imatge que funcionen bé en contextos controlats (train/val), però no és suficientment robust per retrieval a escala gran.
+
+### 🔹 Prova amb ResNet18
+S’ha substituït ResNet50 per ResNet18 per reduir el temps d'entrenament i evitar overfitting.
+
+- Enllaç: [W&B Run 1](https://wandb.ai/grup_07/comics-retrieval/runs/chk21jiq)
+  
+🔎 Resultats qualitatius: 
+- En textos que descrivien entorns concrets (ex: desert, superheroi), cap de les imatges recuperades contenia aquests elements.
+- Les representacions visuals no eren prou riques per captar els detalls de l’escena.
+
+➡️ Resultats:
+- El rendiment de ResNet18 és clarament inferior al Sentence-BERT sol, obté uns valors: `train_recall@1` de ~0.30, `val_recall@1`de ~0.21 i un `val_global_recall@10` de ~0.011.
+
+ ResNet18 redueix massa la capacitat de representació → descartat.
+
+ ### 🔹 Eliminació de la primera frase del text
+ Moltes descripcions comencen amb frases genèriques (“This panel from a golden age...”) que no aporten informació visual útil.
+(ACABAR)
+
+ ### 🔹 Pooling combinat (avg + max)
+ Capturar millor tant el context global com els detalls visuals destacats mitjançant la combinació de:
+- avg_pool: patrons globals
+- max_pool: trets prominents
+  (ACABAR)
+
+ ### 🔹 Fine-tuning parcial de ResNet (layer4 + fc)
+(ACABAR)
+ ## 🧪 Proves amb GTR
+ 
+Per tal de continuar millorant la representació semàntica del text i fer un pas més enllà de Sentence-BERT, hem decidit incorporar un nou encoder: `GTR (Google's T5-based Text Retrieval model)`, GTR és una família de models dissenyada específicament per a tasques de retrieval.
+ (ACABAR)
