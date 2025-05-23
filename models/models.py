@@ -2,11 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from transformers import BertModel, BertTokenizer
+from sentence_transformers import SentenceTransformer
 import torchvision.models as models
 from PIL import Image
 import torchvision.transforms as transforms
 
-# Define the device (CPU or GPU)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -17,99 +17,117 @@ class Baseline(nn.Module):
         bert_model="bert-base-uncased",
         freeze_bert=True,
         freeze_resnet=True,
+        use_sentence_bert=True, # parametre per l'us de sentence bert
+        fine_tune_resnet_tail = False, # parametre per fine tunning
+        remove_first_sentence = False, # parametre per treure la primera frase
+        gtr_model_name="sentence-transformers/gtr-t5-base",
+        use_gtr=False
     ):
-        """
-        Baseline model for text-image cross-modal retrieval using BERT and ResNet
-
-        Args:
-            embedding_dim: Dimension of the joint embedding space
-            bert_model: BERT model version to use
-            freeze_bert: Whether to freeze BERT parameters
-            freeze_resnet: Whether to freeze ResNet parameters
-        """
         super(Baseline, self).__init__()
 
-        # Initialize BERT for text encoding
-        self.bert = BertModel.from_pretrained(bert_model)
-        self.bert_tokenizer = BertTokenizer.from_pretrained(bert_model)
+        self.use_sentence_bert = use_sentence_bert
+        self.bert = None  # Se cargará más adelante si es necesario
+        self.use_gtr = use_gtr
+        self.gtr_model_name = gtr_model_name
+        self.fine_tune_resnet_tail = fine_tune_resnet_tail
+        self.remove_first_sentence_flag = remove_first_sentence
 
-        # Freeze BERT parameters if specified
-        if freeze_bert:
-            for param in self.bert.parameters():
-                param.requires_grad = False
+        # TEXT ENCODER
+        print(f"[CONFIG] use_sentence_bert = {self.use_sentence_bert}")
+        if not self.use_sentence_bert and not self.use_gtr:
+            print("[INFO] → Carregant BERT clàssic (transformers.BertModel)")
+            self.bert = BertModel.from_pretrained(bert_model)
+            self.bert_tokenizer = BertTokenizer.from_pretrained(bert_model)
+            if freeze_bert:
+                print("[INFO] → BERT congelat (freeze_bert = True)")
+                for param in self.bert.parameters():
+                    param.requires_grad = False
+            else:
+                print("[INFO] → BERT entrenable (freeze_bert = False)")
+            self.bert_output_dim = self.bert.config.hidden_size
+            self.text_projection = nn.Sequential(
+                nn.Linear(self.bert_output_dim, 1024),
+                nn.ReLU(),
+                nn.Dropout(p=0.3),
+                nn.Linear(1024, embedding_dim),
+            )
+        else:
+            print("[INFO] → S'utilitzarà Sentence-BERT (carregat més tard)")
+            self.bert_output_dim = 768  # o 384 si canvies el model real o 768 grt
 
-        # Initialize ResNet for image encoding (remove final classification layer)
-        self.resnet = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
-        self.resnet = nn.Sequential(
-            *list(self.resnet.children())[:-1]
-        )  # Remove final FC layer
+        # IMAGE ENCODER
+        print(f"[CONFIG] fine_tune_resnet_tail = {self.fine_tune_resnet_tail}")
+        print(f"[CONFIG] freeze_resnet = {freeze_resnet}")
+        resnet_base = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
 
-        # Freeze ResNet parameters if specified
         if freeze_resnet:
-            for param in self.resnet.parameters():
+            print("[INFO] → ResNet congelada (freeze_resnet = True)")
+            for param in resnet_base.parameters():
                 param.requires_grad = False
+        else:
+            print("[INFO] → ResNet entrenable (freeze_resnet = False)")
 
-        # Get dimensions of BERT and ResNet outputs
-        self.bert_output_dim = self.bert.config.hidden_size  # Usually 768
-        self.resnet_output_dim = 2048  # ResNet50 feature dim
+        if fine_tune_resnet_tail:
+            print("[INFO] → Fine-tune activat per ResNet.layer4 + fc")
+            for name, module in resnet_base.named_children():
+                if name in ["layer4", "fc"]:
+                    for param in module.parameters():
+                        param.requires_grad = True
 
-        # Projection layers to common embedding space
-        self.text_projection = nn.Sequential(
-            nn.Linear(self.bert_output_dim, 1024),
-            nn.ReLU(),
-            nn.Linear(1024, embedding_dim),
-        )
 
+        # Després assigna self.resnet al model tallat (sense fc)
+        self.resnet = nn.Sequential(*list(resnet_base.children())[:-1])
+
+        self.resnet_output_dim = 2048
         self.image_projection = nn.Sequential(
             nn.Linear(self.resnet_output_dim, 1024),
             nn.ReLU(),
+            nn.Dropout(p=0.3),
             nn.Linear(1024, embedding_dim),
         )
 
-        # Image preprocessing
         self.image_transform = transforms.Compose(
             [
                 transforms.Resize(256),
                 transforms.CenterCrop(224),
                 transforms.ToTensor(),
                 transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+                    mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225],
                 ),
             ]
         )
 
+    def load_sentence_bert(self):
+        if self.bert is None:
+            if self.use_gtr:
+                print(f"[INFO] Loading GTR model: {self.gtr_model_name}")
+                self.bert = SentenceTransformer(self.gtr_model_name)
+            else:
+                print("[INFO] Loading Sentence-BERT model...")
+                self.bert = SentenceTransformer("all-MiniLM-L6-v2")
+                #self.bert = SentenceTransformer("all-mpnet-base-v2")
+
+    def remove_first_sentence(self, texts):
+        processed = []
+        for t in texts:
+            sentences = t.strip().split(".")
+            rest = ".".join(sentences[1:]).strip()
+            if not rest:
+                rest = sentences[0]
+            processed.append(rest)
+        return processed
+
     def preprocess_text(self, text_samples):
-        """
-        Preprocess text using BERT tokenizer
-
-        Args:
-            text_samples: List of text strings
-
-        Returns:
-            Dictionary of input_ids, attention_mask, etc.
-        """
-        # print("[DEBUG] text_samples:", text_samples)
-        # print("[DEBUG] Tipus de cada element:", [type(t) for t in text_samples])
-
-        encoded_text = self.bert_tokenizer(
+        return self.bert_tokenizer(
             text_samples,
             padding="max_length",
             truncation=True,
             max_length=128,
             return_tensors="pt",
         )
-        return encoded_text
 
     def preprocess_image(self, image_paths):
-        """
-        Preprocess images for ResNet
-
-        Args:
-            image_paths: List of paths to images or PIL Image objects
-
-        Returns:
-            Tensor of preprocessed images
-        """
         images = []
         for img in image_paths:
             if isinstance(img, str):
@@ -120,75 +138,41 @@ class Baseline(nn.Module):
         return torch.stack(images)
 
     def encode_text(self, text_features=None, raw_text=None):
-        """
-        Encode text into the joint embedding space
+        if self.use_sentence_bert or self.use_gtr:
+            self.load_sentence_bert()
+            if raw_text is None:
+                raise ValueError("Sentence-BERT necesita raw_text.")
 
-        Args:
-            text_features: Preprocessed text features for BERT (optional)
-            raw_text: List of raw text strings (optional)
+            cleaned_text = raw_text
 
-        Returns:
-            text_embeddings: Tensor of shape [batch_size, embedding_dim]
-        """
-        if raw_text is not None:
-            text_features = self.preprocess_text(raw_text).to(device)
+            if self.remove_first_sentence_flag:  # Eliminem la primera frase si aixi esta especificat
+                cleaned_text = self.remove_first_sentence(raw_text)
 
-        # Get BERT embeddings ([CLS] token)
-        with torch.no_grad() if self.bert.training is False else torch.enable_grad():
-            outputs = self.bert(**text_features)
-            text_features = outputs.last_hidden_state[:, 0, :]  # [CLS] token
+            trimmed_text = [" ".join(t.strip().split()[:100]) for t in cleaned_text]
 
-        # Project to embedding space
-        text_embeddings = self.text_projection(text_features)
+            text_embeddings = self.bert.encode(trimmed_text, convert_to_tensor=True).to(device)
+        else:
+            if raw_text is not None:
+                text_features = self.preprocess_text(raw_text).to(device)
+            with torch.no_grad() if not self.bert.training else torch.enable_grad():
+                outputs = self.bert(**text_features)
+                text_features = outputs.last_hidden_state[:, 0, :]  # CLS token
+            text_embeddings = self.text_projection(text_features)
 
-        # L2 normalize
-        text_embeddings = F.normalize(text_embeddings, p=2, dim=1)
-        return text_embeddings
+        return F.normalize(text_embeddings, p=2, dim=1)
 
     def encode_image(self, image_features=None, image_paths=None):
-        """
-        Encode images into the joint embedding space
-
-        Args:
-            image_features: Preprocessed image features (optional)
-            image_paths: List of image paths or PIL Images (optional)
-
-        Returns:
-            image_embeddings: Tensor of shape [batch_size, embedding_dim]
-        """
         if image_paths is not None:
             image_features = self.preprocess_image(image_paths).to(device)
 
-        # Get ResNet features
         with torch.no_grad() if not self.resnet[0].training else torch.enable_grad():
             image_features = self.resnet(image_features)
-            image_features = image_features.flatten(
-                start_dim=1
-            )  # Flatten to [batch_size, features]
+            image_features = image_features.flatten(start_dim=1)
 
-        # Project to embedding space
         image_embeddings = self.image_projection(image_features)
+        return F.normalize(image_embeddings, p=2, dim=1)
 
-        # L2 normalize
-        image_embeddings = F.normalize(image_embeddings, p=2, dim=1)
-        return image_embeddings
-
-    def forward(
-        self, text_features=None, image_features=None, raw_text=None, image_paths=None
-    ):
-        """
-        Forward pass through the model
-
-        Args:
-            text_features: Preprocessed text features (optional)
-            image_features: Preprocessed image features (optional)
-            raw_text: List of raw text strings (optional)
-            image_paths: List of image paths or PIL Images (optional)
-
-        Returns:
-            text_embeddings: Encoded text (if text input provided)
-            image_embeddings: Encoded images (if image input provided)
-        """
+    def forward(self, text_features=None, image_features=None, raw_text=None, image_paths=None):
         text_embeddings = None
         image_embeddings = None
 
@@ -201,15 +185,4 @@ class Baseline(nn.Module):
         return text_embeddings, image_embeddings
 
     def compute_similarity(self, text_embeddings, image_embeddings):
-        """
-        Compute similarity scores between text and image embeddings
-
-        Args:
-            text_embeddings: Tensor of shape [batch_size_text, embedding_dim]
-            image_embeddings: Tensor of shape [batch_size_image, embedding_dim]
-
-        Returns:
-            similarity: Tensor of shape [batch_size_text, batch_size_image]
-        """
-        similarity = torch.mm(text_embeddings, image_embeddings.t())
-        return similarity
+        return torch.mm(text_embeddings, image_embeddings.t())

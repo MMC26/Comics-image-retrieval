@@ -128,5 +128,10 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+#Ignorar wndb i chekpoints
+wandb/
+caption_relevance
+*.pt
+
 # Pycharm
 .idea/
