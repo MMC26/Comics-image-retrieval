@@ -38,14 +38,10 @@ def model_pipeline(cfg: dict):
         # and use them to train the model
         train(model, train_loader, val_loader, optimizer, criterion, config, device=device)
 
-        # and validate
-        validate(model, val_loader, criterion, device=device)
+        #and validate
+        #dins del train es crida directament a validate, per tant no cal tornar-ho a fer aquí
 
-        # qualitative_test(model, test_loader, device=device)
-        # visualize_top10_live(model, test_loader, device=device,num_texts=3)
-
-        # prova amb uns textos fixos, els podem variar o no provar, era per veure com variava segons els model
-        # visualize_fixed_texts(model, test_loader, texts, device=device)
+        # and test
         visualize_fixed_texts_from_loader(model, test_loader, device=device, indices=[5, 12, 20])
         analyze_global_validation_similarities(model, val_loader, device="cuda", fixed_indices=[2, 20, 200])
         plot_global_recall_distribution(model, val_loader, device=device)

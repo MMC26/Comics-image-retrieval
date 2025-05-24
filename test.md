@@ -1,42 +1,61 @@
-# Qualitative Test for Text-Image Matching Model
+# Visualització i Avaluació Qualitativa del Model
 
-This document explains a Python script designed to qualitatively evaluate a text-image matching model. The script visualizes the model's ability to select the most relevant image given a textual input, using a small set of test examples.
+Aquest projecte utilitza diverses funcions de test qualitatiu per analitzar el rendiment del model en un entorn on no disposem de les etiquetes reals del conjunt de test. A continuació es descriuen les funcions principals utilitzades per visualitzar i entendre el comportament del model.
 
-## Workings
-
-In this scripted a qualitative version of test is implemented due to the original dataset beloging to a competition and thus not providing the graound truth for this part. All functions have the possibility to use cuda and the in charge for the main pipeline can iterate over batches from a loader. The loader doesn't reuire the index label as explianed so just the text and the images sets are embedd using the trained model. Then similarity score is used to compare the embeddings we thought this is a representative metric to score the best fitting image. This is fundamentally a matrix or vector multiplication between embeddings so those with higher common features will be scoring highly, which is consistent with the model idea: correlating features in a shared embedding space. And so we select the highest scoring image to be the one most representative of the text. All the images show in a plot with the one being label as selected to interpret the results in aforemention qualitative manner. 
-
-## Code 
-
-The conde consists on three definitons of functions: 
-
-*preprocess_image* : A path, tensor or open Img object can be provided to the function and will handle any of the formats to open the Image with PIL and convert it to RGB
-
-*demo_test* : Function to be fed a model istance not on the device, a cheptoint path to load form a checkpoint.pt file, a list of image sets and texts. This function purpose is to use for small demonstrations of already trained models, diferent to the function used in main does not iterate on batches form a dataloader, ingeneered for small representations instead.
-
-*qualitative_test*: Function used in the pipeline of the main training program, uses gpu to process batches. It outputs the first n desired samples.
-
-## Example usage
-
-Instaciate a model class and select the path for the checkpoint file. Create a custom list of text and images from local repository as an example and show the results via *demo_test* then results can be visulized for clarification and insight on the scorings
-
-model = YourModelClass(...)
-checkpoint_path = "path/to/your_checkpoint.pth"
-device = "cuda" if torch.cuda.is_available() else "cpu"
-
-model = load_model_checkpoint(model, checkpoint_path, device)
-
-samples = [
-    {
-        "text": "A cat sitting on a sofa",
-        "image_set": ["cat1.jpg", "dog1.jpg", "cat2.jpg"]
-    },
-    {
-        "text": "A red sports car",
-        "image_set": [PILImage.open("car1.png"), PILImage.open("car2.png")]
-    },
-]
-
-results = qualitative_demo(model, samples, device=device, num_examples=5)
 ---
+
+## `denormalize_imgnet`: Visualització correcta d’imatges
+
+La normalització de les imatges segons els valors d'ImageNet afecta la seva visualització directa. Per aquest motiu, hem implementat la funció `denormalize_imgnet`, que desfà aquesta normalització i permet veure les imatges en el seu format natural. Aquesta funció és cridada en totes les visualitzacions qualitatives posteriors.
+
+---
+
+## `visualize_fixed_texts_from_loader`: Test qualitatiu amb textos fixos
+
+El conjunt de test no inclou les etiquetes que indiquen quina imatge és la correcta per a cada text, ja que està pensat per a una competició. Per aquest motiu, hem creat la funció `visualize_fixed_texts_from_loader`, que:
+
+- Selecciona sempre els mateixos textos (índexs globals fixes).
+- Mostra les 10 imatges més similars per a cada text.
+- Permet comparar visualment quin model genera millors resultats.
+
+Aquesta funció és especialment útil per comparar diferents versions del model o hiperparàmetres mantenint els textos constants.
+
+---
+
+## `analyze_global_validation_similarities`: Posició de la imatge correcta
+
+Per aprofundir en l’anàlisi qualitativa, hem creat la funció `analyze_global_validation_similarities`, que treballa sobre el conjunt de validació (on sí tenim l’etiqueta correcta). Aquesta funció:
+
+- Calcula la similitud entre el text i totes les imatges globals.
+- Ordena les imatges per puntuació de similitud.
+- Mostra la posició real de la imatge correcta dins del rànquing.
+- Dibuixa un gràfic on es veu si la resposta correcta queda davant o enrere.
+
+Aquest mètode s’assembla a la mètrica **MRR (Mean Reciprocal Rank)**, i és útil per estudiar exemples concrets de forma visual i analítica.
+
+---
+
+## `plot_global_recall_distribution`: Distribució global de posicions
+
+Per entendre com es comporta el model a nivell global, hem creat la funció `plot_global_recall_distribution`, que:
+
+- Recorre totes les mostres del conjunt de validació.
+- Calcula en quina posició del rànquing es troba la imatge correcta.
+- Mostra un histograma amb la distribució d’aquestes posicions.
+- Imprimeix el percentatge de casos que apareixen al top 1, top 2, ..., top 10.
+
+Aquesta anàlisi permet veure si el model tendeix a encertar molt aviat o si la resposta correcta acostuma a quedar enrere.
+
+---
+
+## Execució dins de `main.py`
+
+Totes aquestes funcions s’executen automàticament **després de l’entrenament i la validació** del model, dins del fitxer `main.py`. Aquesta integració permet obtenir de forma immediata:
+
+- Una avaluació qualitativa visual.
+- Comparatives entre models.
+- Anàlisi detallat de posicionament d’imatges rellevants.
+
+---
+
 
