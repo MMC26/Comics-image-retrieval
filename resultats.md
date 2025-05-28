@@ -123,33 +123,58 @@ Vam voler provar també com funcionaven aquestes dues millores juntes:
 - Enllaç: [W&B Run 1](https://wandb.ai/grup_07/comics-retrieval/runs/jihx14u5)
 
 Resultats qualitatius: 
-- Encara que es capaç de identificar una avió, o colors, o coses més específiques com un núvol, en general, els resultats no són tan acertats generalment com abans.
+- El model és capaç d’identificar elements específics com avions, colors o núvols.
+- No obstant això, la correspondència general text-imatge és menys precisa que en altres configuracions.
 
 Resultats:
-- Obtenim un valor de `gval_global_recall@10` bastant alt, de 0.034, però seguim veient moltes fluctuacions entre époques, i no millora respecte simplement treure la primera frase. 
+- Obtenim un valor de `gval_global_recall@10` bastant alt, de 0.034, però no millora respecte la configuració de només eliminar la primera frase.
+- A més, continuem observant fluctuacions importants entre èpoques.
 
  ## Proves amb GTR
  
 Per tal de continuar millorant la representació semàntica del text i fer un pas més enllà de Sentence-BERT, hem decidit incorporar un nou encoder: `GTR (Google's T5-based Text Retrieval model)`, GTR és una família de models dissenyada específicament per a tasques de retrieval.
 
-Vam aplicar les millors millores que haviem vist que funcionaven amb Sentence-BERT: treure la primera frase i fine tuning.
+Vam aplicar les millors millores que haviem vist que funcionaven amb Sentence-BERT: treure la primera frase i fine-tuning.
 
 ### Fine tuning 
 
-- Enllaç: [W&B Run 1]((https://wandb.ai/grup_07/comics-retrieval/runs/vob8sf5k)
+- Enllaç: [W&B Run 1](https://wandb.ai/grup_07/comics-retrieval/runs/vob8sf5k)
+  
+Resultats qualitatius: 
+-Els resultats són pobres: el model no capta bé el contingut visual.
+- Es produeixen similituds negatives, cosa que indica desalineació entre embeddings text-imatge.
 
+Resultats:
+Obtenim un `val_global_recall@10: 0.01908`, pitjor que qualsevol altra configuració anterior.
 
-Obtenim uns resultats tant quantititativament (`val_global_recall@10 = 0.01908`) com qualitativament pitjors que en qualsevol cas anterior. Amb unes similituds negatives.
+### Fine tunning + Treure primera frase
 
-## Fine tunning + Treure primera frase
+- Enllaç: [W&B Run 1](https://wandb.ai/grup_07/comics-retrieval/runs/areda52c)
 
-Qualitativament no s'observa una millora, pero si obtenim el `val_global_recall@10` més alt fins el moment de 0.04198. Peroò seguim observant el problema de fluctuacions entre èpoques.
-https://wandb.ai/grup_07/comics-retrieval/runs/areda52c 
+Resultats qualitatius: 
+- No observem una millora clara en la qualitat de les prediccions.
+  
+Resultats:  
+- Obtenim un `val_global_recall@10: 0.04198` (el més alt de tots)
+- Malgrat la bona mètrica, la qualitat dels resultats no acompanya, i les fluctuacions dificulten l’estabilitat del model.
 
-## Treure primera frase
+### Treure primera frase
+- Enllaç: [W&B Run 1](https://wandb.ai/grup_07/comics-retrieval/runs/4sjuwupe )
+Resultats qualitatius: 
+- El model mostra una millor comprensió semàntica.
+- Les imatges retornades representen millor el contingut visual descrit (accions, objectes, vestuari, etc.).
 
-Veiem una millora clara qualitativament parlant, i quantitativament, els resultats no són dolents `val_global_recall@1 0.00382`.
+Resultats:
+- Obtenim un `val_global_recall@10: 0.026` i un `val_global_recall@1: 0.00382`
+- Els resultats són estables entre èpoques i qualitativament coherents.
 
-https://wandb.ai/grup_07/comics-retrieval/runs/4sjuwupe 
+# Model Final Seleccionat
+Després de comparar totes les configuracions, el model amb GTR i eliminació de la primera frase (sense fine-tuning) ha estat el que ha mostrat:
 
-El model final escollit com millor ha estat quan simplement treiem la primera frase. 
+- Millor coherència qualitativa
+
+- Estabilitat en el temps
+
+- Suficient rendiment quantitatiu
+
+Per aquests motius, hem escollit aquesta configuració com la millor per al nostre sistema de matching text-imatge.
