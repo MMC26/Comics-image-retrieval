@@ -36,6 +36,7 @@ El fitxer `main.py` ofereix una configuració flexible mitjançant el diccionari
 - Tria si vols eliminar la primera frase dels subtítols en el preprocessament (`remove_first_sentence`).
 
 ### Checkpoints i reproductibilitat:
+- La ruta a les dades s'especifica en el fitxer `dataloaders.py` a la funció `ComicsDataset`, està especificada la ruta de la maquina virtual on s'han fet les proves. Si es vol canviar el directori haurà de contenir el dataset en file format `.parquet`
 - Especifica on desar i carregar checkpoints del model (`checkpoint_path`).
 - Totes les llavors aleatòries s’estableixen a l’inici per assegurar la reproductibilitat.
 
