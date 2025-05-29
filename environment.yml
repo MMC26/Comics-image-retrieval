@@ -13,6 +13,7 @@ dependencies:
   - wandb
   - onnxruntime
   - ipykernel
+  - sentence_transformers
 - numpy
 - tqdm
 - tensorboard
@@ -22,4 +23,3 @@ dependencies:
 - matplotlib
 - datasets
 - transformers
-- sentence_transformers
