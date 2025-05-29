@@ -141,7 +141,7 @@ Vam aplicar les millors millores que haviem vist que funcionaven amb Sentence-BE
 - Enllaç: [W&B Run 1](https://wandb.ai/grup_07/comics-retrieval/runs/vob8sf5k)
   
 Resultats qualitatius: 
--Els resultats són pobres: el model no capta bé el contingut visual.
+- Els resultats són pobres: el model no capta bé el contingut visual.
 - Es produeixen similituds negatives, cosa que indica desalineació entre embeddings text-imatge.
 
 Resultats:
@@ -160,6 +160,7 @@ Resultats:
 
 ### Treure primera frase
 - Enllaç: [W&B Run 1](https://wandb.ai/grup_07/comics-retrieval/runs/4sjuwupe )
+  
 Resultats qualitatius: 
 - El model mostra una millor comprensió semàntica.
 - Les imatges retornades representen millor el contingut visual descrit (accions, objectes, vestuari, etc.).
