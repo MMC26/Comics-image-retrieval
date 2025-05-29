@@ -1,0 +1,17 @@
+torch
+torchvision
+torchaudio
+onnx
+wandb
+onnxruntime
+ipykernel
+numpy
+tqdm
+tensorboard
+protobuf
+pandas
+pillow
+matplotlib
+datasets
+transformers
+sentence_transformers
