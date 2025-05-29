@@ -6,7 +6,7 @@ Aquest document recull el seguiment de les diferents proves realitzades durant e
 
 Des del principi es va optar per utilitzar **hard negative mining** per construir les pèrdues de contrast. Aquesta decisió es va prendre amb la intenció de millorar la discriminació del model entre mostres similars però incorrectes. En les primeres fases es va observar que els resultats del test eren poc coherents: les imatges recuperades sovint no tenien cap relació amb els textos d’entrada.
 
-## Fase 1: Proves inicials amb subconjunt de dades (5.000 mostres)
+### Proves inicials amb subconjunt de dades (5.000 mostres)
 
 Es va començar amb un model bàsic:
 - Arquitectura: BERT + ResNet50
@@ -28,7 +28,7 @@ Es van fer proves variant els hiperparàmetres:
 
 **Hipòtesi:** massa poques dades i/o un model massa simple per capturar la semàntica multimodal.
 
-## Fase 2: Model amb totes les dades i regularització
+### Model amb totes les dades i regularització
 
 Per millorar la generalització, es va afegir una capa lineal addicional i un **dropout de 0.3**. També es va entrenar amb **tot el conjunt de dades**. Amb la una configuració amb `embedding_dim=128`, `  learning_rate=1e-4` i `batch_size=32`.
 
