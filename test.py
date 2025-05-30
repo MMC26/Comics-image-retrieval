@@ -140,7 +140,7 @@ def analyze_global_validation_similarities(model, val_loader, device="cuda", fix
 
     for i in fixed_indices:
         if i >= len(all_texts):
-            print(f"⚠️ Exemple {i} fora del rang de validació.")
+            print(f" Exemple {i} fora del rang de validació.")
             continue
 
         text = all_texts[i]
@@ -176,68 +176,3 @@ def analyze_global_validation_similarities(model, val_loader, device="cuda", fix
         plt.show()
 
 
-def plot_global_recall_distribution(model, val_loader, device="cuda"):
-    """
-    Mostra la distribució de la posició en què apareix la imatge correcta
-    per cada text dins del conjunt de validació global.
-    """
-
-    model.eval()
-    model.to(device)
-
-    all_texts = []
-    all_images = []
-    correct_indices = []
-
-    idx_counter = 0
-    for batch in val_loader:
-        for text, image_set, label in zip(batch["texts"], batch["image_sets"], batch["labels"]):
-            all_texts.append(text)
-            all_images.extend(image_set)
-            correct_indices.append(idx_counter + label)
-            idx_counter += len(image_set)
-
-    # Codifica totes les imatges
-    image_embeddings = []
-    batch_size = 128
-    for i in range(0, len(all_images), batch_size):
-        batch_imgs = all_images[i:i+batch_size]
-        _, embs = model(image_paths=batch_imgs)
-        image_embeddings.append(embs.cpu())
-
-    all_image_embs = torch.cat(image_embeddings, dim=0).to(device)
-
-    # Calcular posicions
-    position_counts = Counter()
-    total = len(all_texts)
-
-    for i, (text, correct_idx) in enumerate(zip(all_texts, correct_indices)):
-        text_emb, _ = model(raw_text=[text])
-        text_emb = text_emb.to(device)
-
-        sim_scores = model.compute_similarity(text_emb, all_image_embs).squeeze(0).detach().cpu()
-        sorted_indices = torch.argsort(sim_scores, descending=True)
-
-        correct_rank = (sorted_indices == correct_idx).nonzero(as_tuple=True)[0].item()
-        position_counts[correct_rank + 1] += 1  # +1 per tenir posicions 1-based
-
-    # Crear llistes ordenades per visualització
-    max_rank = max(position_counts.keys())
-    positions = list(range(1, max_rank + 1))
-    counts = [position_counts.get(pos, 0) for pos in positions]
-
-    # Visualització
-    plt.figure(figsize=(12, 5))
-    plt.bar(positions, counts, color='skyblue')
-    plt.title("Distribució de la posició de la imatge correcta")
-    plt.xlabel("Posició en el rànquing (1 = top1)")
-    plt.ylabel("Nombre de textos")
-    plt.xticks(positions)
-    plt.grid(axis="y", linestyle="--", alpha=0.6)
-    plt.tight_layout()
-    plt.show()
-
-    print(f"[INFO] Processats {total} exemples.")
-    for pos in range(1, min(11, max_rank + 1)):
-        count = position_counts.get(pos, 0)
-        print(f"🔹 Top {pos}: {count} textos ({count/total:.2%})")

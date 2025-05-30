@@ -69,7 +69,7 @@ def validate(model, loader, criterion, device="cuda"):
             positives = image_embeddings[torch.arange(B), labels_tensor]
             sim_matrix = torch.bmm(image_embeddings, text_embeddings.unsqueeze(2)).squeeze(2)
 
-            recall5 = compute_recall_at_k(sim_matrix, labels_tensor, k=1)
+            recall1 = compute_recall_at_k(sim_matrix, labels_tensor, k=1)
 
             sim_matrix.scatter_(1, labels_tensor.unsqueeze(1), float('-inf'))
             hardest_neg_idx = sim_matrix.argmax(dim=1)
@@ -79,7 +79,7 @@ def validate(model, loader, criterion, device="cuda"):
 
             n = len(labels)
             total_loss += loss.item() * n
-            total_recall += recall5 * n
+            total_recall += recall1 * n
             total_samples += n
 
     avg_loss = total_loss / total_samples
@@ -94,7 +94,7 @@ def validate_global_retrieval(model, val_loader, criterion, device="cuda"):
     all_texts = []
     correct_image_indices = []
 
-    print("[INFO] 🔍 Recol·lectant totes les imatges i textos del val_loader...")
+    print("[INFO] Recol·lectant totes les imatges i textos del val_loader...")
 
     with torch.no_grad():
         idx_counter = 0
@@ -169,19 +169,19 @@ def train(model, train_loader, val_loader, optimizer, criterion, config, device=
 
         print(f"\n[INFO] ➔ Inici de l'època {epoch}")
         for batch_idx, batch in enumerate(train_loader):
-            print(f"[INFO] 🚀 Processant batch {batch_idx} de l'època {epoch}...")
+            print(f"[INFO] Processant batch {batch_idx} de l'època {epoch}...")
 
-            loss, recall5, n = train_batch(model, batch, optimizer, criterion, device)
+            loss, recall1, n = train_batch(model, batch, optimizer, criterion, device)
             example_ct += n
             total_loss += loss * n
-            total_recall += recall5 * n
+            total_recall += recall1 * n
             total_samples += n
 
-            print(f"[INFO] ✅ Batch {batch_idx} completat. Loss: {loss:.4f}, Recall@1: {recall5:.4f}")
+            print(f"[INFO] Batch {batch_idx} completat. Loss: {loss:.4f}, Recall@1: {recall1:.4f}")
 
         train_loss = total_loss / total_samples
         train_recall = total_recall / total_samples
-        print(f"[INFO] 📝 Fi de l'època {epoch}. Train Loss: {train_loss:.4f}, Train Recall@1: {train_recall:.4f}")
+        print(f"[INFO] Fi de l'època {epoch}. Train Loss: {train_loss:.4f}, Train Recall@1: {train_recall:.4f}")
 
         val_loss, val_recall = validate(model, val_loader, criterion, device)
         val_global_loss, val_global_recall1, val_global_recall10 = validate_global_retrieval(model, val_loader, criterion, device)
@@ -204,4 +204,4 @@ def train(model, train_loader, val_loader, optimizer, criterion, config, device=
         print(f"[Epoch {epoch}] Val Global Loss: {val_global_loss:.4f} | Recall@10: {val_global_recall10:.8f}")
 
 
-        #save_checkpoint(config["checkpoint_path"], model, optimizer, epoch)
+        #save_checkpoint(config["checkpoint_path"], model, optimizer, epoch) 

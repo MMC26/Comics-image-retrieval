@@ -35,22 +35,10 @@ Aquest mètode s’assembla a la mètrica **MRR (Mean Reciprocal Rank)**, i és 
 
 ---
 
-## `plot_global_recall_distribution`: Distribució global de posicions
-
-Per entendre com es comporta el model a nivell global, hem creat la funció `plot_global_recall_distribution`, que:
-
-- Recorre totes les mostres del conjunt de validació.
-- Calcula en quina posició del rànquing es troba la imatge correcta.
-- Mostra un histograma amb la distribució d’aquestes posicions.
-- Imprimeix el percentatge de casos que apareixen al top 1, top 2, ..., top 10.
-
-Aquesta anàlisi permet veure si el model tendeix a encertar molt aviat o si la resposta correcta acostuma a quedar enrere.
-
----
 
 ## Execució dins de `main.py`
 
-Totes aquestes funcions s’executen automàticament **després de l’entrenament i la validació** del model, dins del fitxer `main.py`. Aquesta integració permet obtenir de forma immediata:
+Totes aquestes funcions estan implementades al fitxer `test.py` i s’executen automàticament **després de l’entrenament i la validació** del model, dins del fitxer `main.py`. Aquesta integració permet obtenir de forma immediata:
 
 - Una avaluació qualitativa visual.
 - Comparatives entre models.
