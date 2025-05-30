@@ -98,6 +98,6 @@ Això farà:
 ## Course & Institution
 
 Xarxes Neuronals i Aprenentatge Profund  
-Grau de Matemàtica Computacional i Anàlisi de Dades, UAB, 2023
+Grau de Matemàtica Computacional i Anàlisi de Dades, UAB, 2025
 
 
